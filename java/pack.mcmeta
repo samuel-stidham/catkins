@@ -1,0 +1,12 @@
+{
+  "pack": {
+    "description": "Catkins: cat-inspired carved pumpkins",
+    "pack_format": 34,
+    "supported_formats": {
+      "min_inclusive": 34,
+      "max_inclusive": 64
+    },
+    "min_format": 34,
+    "max_format": 999
+  }
+}
