@@ -10,7 +10,7 @@ import re
 try:
     from PIL import Image
 except ImportError as error:
-    raise SystemExit("Pillow is required. Install requirements.txt first.") from error
+    raise SystemExit("Pillow is required. Run pip install -r requirements.txt first.") from error
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,6 +1,6 @@
 # catkins
 
-Catkins is a cat-inspired Minecraft resource pack. Every added resource follows the cat theme; unrelated themes belong in a different pack.
+Catkins is a cat-inspired Minecraft resource pack. Every added resource follows the cat theme. Unrelated themes belong in a different pack.
 
 ## Install
 
@@ -16,7 +16,7 @@ Bedrock support is not released yet. When it ships, open `catkins-bedrock-<versi
 
 ## What changes
 
-Catkins restyles the vanilla carved pumpkin and jack o'lantern. Recipes, item identities, block behavior, and golem creation stay vanilla.
+Catkins restyles the vanilla carved pumpkin and jack o'lantern. Recipes, item IDs, block behavior, and golem creation stay vanilla.
 
 The Java pack adds symmetric cat ears to both block models and gives both blocks a happy carved cat face. The plain pumpkin is unchanged.
 
@@ -24,18 +24,18 @@ The Java pack adds symmetric cat ears to both block models and gives both blocks
 
 | Edition | Status | Versions |
 | --- | --- | --- |
-| Java | Complete | 1.21 through 1.21.11, plus released 26.x versions through 26.3 |
-| Bedrock | Planned | Current release at the start of Bedrock work |
+| Java | Complete | 1.21 through 1.21.11 and 26.1 through 26.3 |
+| Bedrock | Planned | Whichever Bedrock release is current when work starts |
 
-One Java pack supports the full Java range. Version-specific resources use format-gated overlays when required.
+One Java pack supports the full Java range. Overlays hold different files for the versions that need them.
 
 ## What differs on Bedrock
 
-A Bedrock resource pack cannot replace vanilla block geometry. Placed carved pumpkins and jack o'lanterns will receive cat faces but no ears. Cat ears can still be added to the snow golem head through its resource-pack-owned entity geometry. Catkins will not use a behavior pack or custom block to bypass this limit.
+A Bedrock resource pack cannot replace vanilla block geometry. Placed carved pumpkins and jack o'lanterns get cat faces but no ears. The snow golem head can still get cat ears through its entity geometry, which resource packs may replace. Catkins will not use a behavior pack or custom block to bypass this limit.
 
 ## Build from source
 
-Requires Python 3 and Pillow.
+Requires Python 3.10 or newer and Pillow.
 
 ```text
 python3 -m venv .venv
@@ -43,7 +43,7 @@ python3 -m venv .venv
 .venv/bin/python tools/build.py --version 1.0.0
 ```
 
-The renderer writes pack textures under `java/` and 16x previews under `tools/preview/`. The build creates `dist/catkins-java-<version>.zip`. Generated PNGs are derived from the text pixelmaps in `tools/pixelmaps/`.
+The build runs `tools/render_pixelmaps.py`, which writes pack textures under `java/` and 256x256 previews under `tools/preview/`. The build then creates `dist/catkins-java-<version>.zip`. Generated PNGs are derived from the text pixelmaps in `tools/pixelmaps/`.
 
 ## License
 

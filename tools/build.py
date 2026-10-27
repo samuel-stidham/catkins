@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build release archives from the Catkins source trees."""
+"""Build the Catkins Java release archive."""
 
 from __future__ import annotations
 

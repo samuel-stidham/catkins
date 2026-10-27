@@ -9,9 +9,9 @@ Every resource added to Catkins must follow the cat theme. Use a different pack 
 3. Add or update edition-neutral source art in `tools/pixelmaps/`.
 4. Add destination paths to `OUTPUTS` in `tools/render_pixelmaps.py`.
 5. Put Java texture overrides under `java/assets/minecraft/textures/` and model overrides under `java/assets/minecraft/models/`.
-6. Put Bedrock texture overrides under `bedrock/textures/` and entity geometry overrides under `bedrock/models/entity/` after Bedrock support ships.
-7. Run the renderer and build.
-8. Test every supported rendering context affected by the override.
+6. Once Bedrock support ships, also put Bedrock texture overrides under `bedrock/textures/` and entity geometry overrides under `bedrock/models/entity/`.
+7. Run `tools/build.py`, which also runs the renderer.
+8. Test every supported view affected by the override.
 
 The carved pumpkin and jack o'lantern Java block models override these vanilla paths:
 
@@ -27,7 +27,7 @@ java/assets/minecraft/textures/block/carved_pumpkin.png
 java/assets/minecraft/textures/block/jack_o_lantern.png
 ```
 
-Bedrock destination names stay in the renderer output table. Its snow golem geometry belongs under `bedrock/models/entity/`; confirm the current vanilla path before adding the override.
+Bedrock outputs will be added to `OUTPUTS` when Bedrock support ships. Snow golem geometry belongs under `bedrock/models/entity/`. Confirm the current vanilla path before adding the override.
 
 ## Pixelmap format
 
@@ -44,11 +44,11 @@ AAAAAAAAAAAAAAAA
 
 Each palette key is one non-whitespace character. Each color is eight hexadecimal RGBA digits. Every pixel character must exist in the palette.
 
-PNGs are build outputs. Do not hand-edit them. A pull request with hand-edited PNGs will be asked to supply the pixelmap instead.
+PNGs are build outputs. Do not hand-edit them. Pull requests with hand-edited PNGs will be sent back for the pixelmap.
 
 ## Java overlays
 
-Use overlays only when a target version needs a different file. Add the version boundary, resource-pack format, and overlay range to `FORMAT_TABLE` in `tools/build.py`. Put overlay files under the matching directory inside `java/`, using the same path they replace. The build writes both metadata schemes so pre-1.21.9 and current clients select the correct range.
+Use overlays only when a target version needs a different file. Add a row to `FORMAT_TABLE` in `tools/build.py` with the `version`, `format`, `legacy`, and `overlay` fields filled in. Put overlay files under the matching directory inside `java/`, using the same path they replace. The build writes `supported_formats` for pre-1.21.9 clients and `min_format`/`max_format` for current clients, so each selects the correct range.
 
 ## Commands
 
@@ -57,7 +57,7 @@ Use overlays only when a target version needs a different file. Add the version 
 .venv/bin/python tools/build.py --version 1.0.0
 ```
 
-The renderer updates edition assets and writes 16x previews to `tools/preview/`. The build reruns the renderer, writes Java metadata, and creates the release archive in `dist/`.
+The renderer updates edition assets and writes 256x256 previews to `tools/preview/`. The build runs the renderer, writes `java/pack.mcmeta`, and creates the release archive in `dist/`.
 
 ## Pull requests
 
@@ -71,7 +71,7 @@ Include:
 
 ## Releases
 
-Release tags use the form `v1.0.0`. Pushing one builds the Java archive, publishes the same file to Modrinth and CurseForge, and creates a GitHub release.
+Release tags use the form `v1.0.0`, or `v1.0.0-beta.1` for a pre-release. Pushing one builds the Java archive, publishes the same file to Modrinth and CurseForge, and creates a GitHub release.
 
 Configure these GitHub repository variables before pushing the first release tag:
 
