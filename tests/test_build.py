@@ -40,6 +40,32 @@ class TargetsTest(unittest.TestCase):
         self.assertEqual(sum(len(t["game_versions"]) for t in result), len(build.PACK_FORMATS))
 
 
+class VersionPatternTest(unittest.TestCase):
+    def test_accepts_three_numbers_without_leading_zeros(self) -> None:
+        for version in ("1.0.0", "0.1.0", "10.20.30"):
+            self.assertIsNotNone(build.VERSION_PATTERN.fullmatch(version), version)
+
+    def test_rejects_other_shapes(self) -> None:
+        for version in ("01.2.3", "1.0", "v1.0.0", "1.0.0-beta.1", "1.0.0.0", ""):
+            self.assertIsNone(build.VERSION_PATTERN.fullmatch(version), version)
+
+
+class BuildTest(unittest.TestCase):
+    def test_build_is_deterministic(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            first = Path(temp) / "first"
+            second = Path(temp) / "second"
+            with mock.patch.object(build, "DIST_DIR", first):
+                build.build("1.0.0")
+            with mock.patch.object(build, "DIST_DIR", second):
+                build.build("1.0.0")
+            names = sorted(path.name for path in first.iterdir())
+            self.assertEqual(names, sorted(path.name for path in second.iterdir()))
+            self.assertEqual(len(names), len(build.targets()) + 1)
+            for name in names:
+                self.assertEqual((first / name).read_bytes(), (second / name).read_bytes(), name)
+
+
 class PackMetadataTest(unittest.TestCase):
     def test_legacy_format_pins_pack_format_only(self) -> None:
         pack = build.pack_metadata(64)["pack"]

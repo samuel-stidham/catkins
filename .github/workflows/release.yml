@@ -22,13 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
       TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
-      - name: Check out the tag
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.tag || github.event.release.tag_name }}
-
       - name: Check that the release exists
         shell: bash
         run: |
@@ -37,10 +33,15 @@ jobs:
             exit 1
           fi
 
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
       - name: Build archives
         uses: ./.github/actions/build-release
         with:
-          tag: ${{ inputs.tag || github.event.release.tag_name }}
+          tag: ${{ env.TAG }}
 
       - name: Set release notes and attach archives
         shell: bash

@@ -62,7 +62,7 @@ When one format needs a different file, put the replacement under `java-override
 .venv/bin/python tools/build.py --version 1.0.0
 ```
 
-The tests cover the pack format grouping, the generated `pack.mcmeta`, and the changelog extraction. Every release workflow runs them before building.
+The tests cover the pack format grouping, the generated `pack.mcmeta`, build determinism, and the changelog extraction. Every release workflow runs them before building.
 
 The renderer updates edition assets and writes 256x256 previews to `tools/preview/`. The build runs the renderer, writes `java/pack.mcmeta`, and creates one release archive per pack format in `dist/`, listed in `dist/manifest.json`.
 

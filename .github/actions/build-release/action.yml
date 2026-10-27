@@ -11,9 +11,6 @@ inputs:
     default: ""
 
 outputs:
-  version:
-    description: Pack version, the tag without its leading v
-    value: ${{ steps.version.outputs.version }}
   targets:
     description: JSON array of selected archives, one object per archive with label, file, name, version, and newline-separated game_versions
     value: ${{ steps.select.outputs.targets }}
@@ -28,7 +25,7 @@ runs:
         TAG: ${{ inputs.tag }}
       run: |
         version="${TAG#v}"
-        if [[ "$TAG" != v* || ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        if [[ "$TAG" != v* || ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
           echo "Release tags must look like v1.0.0, got $TAG" >&2
           exit 1
         fi

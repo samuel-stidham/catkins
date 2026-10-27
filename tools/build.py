@@ -19,7 +19,7 @@ JAVA_DIR = ROOT / "java"
 OVERRIDES_DIR = ROOT / "java-overrides"
 DIST_DIR = ROOT / "dist"
 DEFAULT_PACK_VERSION = "1.0.0"
-VERSION_PATTERN = re.compile(r"^[0-9]+(?:\.[0-9]+){2}$")
+VERSION_PATTERN = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*)){2}$")
 DESCRIPTION = "Catkins: cat-inspired carved pumpkins"
 
 # Resource pack format of every supported release, oldest first, from
