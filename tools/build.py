@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Sequence
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 
@@ -53,10 +53,10 @@ DEV_MAX_FORMAT = 999
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 
-def targets() -> list[dict[str, Any]]:
+def targets(pack_formats: Sequence[tuple[str, int]] = PACK_FORMATS) -> list[dict[str, Any]]:
     """Group consecutive game versions that share a pack format, oldest first."""
     grouped: list[dict[str, Any]] = []
-    for game_version, pack_format in PACK_FORMATS:
+    for game_version, pack_format in pack_formats:
         if grouped and grouped[-1]["pack_format"] == pack_format:
             grouped[-1]["game_versions"].append(game_version)
             continue
@@ -99,14 +99,14 @@ def dev_pack_metadata() -> dict[str, Any]:
     }
 
 
-def encode_metadata(metadata: dict[str, Any]) -> bytes:
-    return (json.dumps(metadata, indent=2, ensure_ascii=True) + "\n").encode("ascii")
+def encode_json(data: dict[str, Any]) -> bytes:
+    return (json.dumps(data, indent=2, ensure_ascii=True) + "\n").encode("ascii")
 
 
 def write_dev_pack_metadata() -> Path:
     destination = JAVA_DIR / "pack.mcmeta"
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(encode_metadata(dev_pack_metadata()))
+    destination.write_bytes(encode_json(dev_pack_metadata()))
     return destination
 
 
@@ -129,7 +129,7 @@ def pack_files(pack_format: int) -> dict[str, Path]:
 
 def write_archive(destination: Path, files: dict[str, Path], metadata: dict[str, Any]) -> None:
     entries = {name: source.read_bytes() for name, source in files.items()}
-    entries["pack.mcmeta"] = encode_metadata(metadata)
+    entries["pack.mcmeta"] = encode_json(metadata)
     with ZipFile(destination, "w", ZIP_DEFLATED, compresslevel=9) as archive:
         for name in sorted(entries):
             info = ZipInfo(name, ZIP_TIMESTAMP)
@@ -147,7 +147,7 @@ def build(version: str) -> dict[str, Any]:
         file_name = f"catkins-java-{version}-mc{target['label']}.zip"
         write_archive(DIST_DIR / file_name, pack_files(pack_format), pack_metadata(pack_format))
         manifest["targets"].append({**target, "file": file_name})
-    (DIST_DIR / "manifest.json").write_bytes(encode_metadata(manifest))
+    (DIST_DIR / "manifest.json").write_bytes(encode_json(manifest))
     return manifest
 
 

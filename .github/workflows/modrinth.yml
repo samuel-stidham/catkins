@@ -28,20 +28,18 @@ jobs:
     # so releases keep working while the Modrinth project waits for approval.
     if: vars.MODRINTH_PROJECT_ID != '' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ inputs.tag || github.event.release.tag_name }}
-      TARGETS: ${{ inputs.targets }}
-      MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
-      MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
     outputs:
-      targets: ${{ steps.select.outputs.targets }}
+      targets: ${{ steps.build.outputs.targets }}
     steps:
       - name: Check configuration
         shell: bash
+        env:
+          MODRINTH_PROJECT_ID: ${{ vars.MODRINTH_PROJECT_ID }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: |
           for name in MODRINTH_PROJECT_ID MODRINTH_TOKEN; do
             if [[ -z "${!name}" ]]; then
-              echo "$name is not configured. Set it once the Modrinth project is approved." >&2
+              echo "$name is not configured" >&2
               exit 1
             fi
           done
@@ -56,27 +54,7 @@ jobs:
         uses: ./.github/actions/build-release
         with:
           tag: ${{ inputs.tag || github.event.release.tag_name }}
-
-      - name: Select archives to upload
-        id: select
-        shell: bash
-        env:
-          VERSION: ${{ steps.build.outputs.version }}
-        run: |
-          targets="$(jq -c --arg filter "$TARGETS" --arg version "$VERSION" '
-            [ .targets[]
-              | select($filter == "" or (.label | IN($filter | split(" ")[])))
-              | { label, file,
-                  name: "Catkins \($version) for Minecraft \(.label)",
-                  version: "\($version)+mc\(.label)",
-                  game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
-          if [[ "$targets" == "[]" ]]; then
-            echo "No archive matches targets \"$TARGETS\". Valid labels:" >&2
-            jq -r '.targets[].label' dist/manifest.json >&2
-            exit 1
-          fi
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
-          echo "$targets" | jq -r '.[] | "Will upload \(.file) for \(.game_versions | gsub("\n"; ", "))"'
+          targets: ${{ inputs.targets }}
 
       - name: Share archives with the upload jobs
         uses: actions/upload-artifact@v7
@@ -106,7 +84,7 @@ jobs:
           path: dist
 
       - name: Upload to Modrinth
-        uses: Kira-NT/mc-publish@v3.3.2
+        uses: Kira-NT/mc-publish@c23376546a97f5ba7984e94445da359459b14419 # v3.3.2
         with:
           modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}

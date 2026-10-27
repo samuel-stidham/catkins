@@ -1,15 +1,22 @@
 name: Build release archives
-description: Build every Catkins archive for a release tag and write that version's CHANGELOG.md section to dist/release-notes.md.
+description: Build every Catkins archive for a release tag, write that version's CHANGELOG.md section to dist/release-notes.md, and select the archives to publish.
 
 inputs:
   tag:
     description: Release tag, such as v1.0.0
     required: true
+  targets:
+    description: Space-separated archive labels to select, such as "1.21.4 26.3". Empty selects every archive.
+    required: false
+    default: ""
 
 outputs:
   version:
     description: Pack version, the tag without its leading v
     value: ${{ steps.version.outputs.version }}
+  targets:
+    description: JSON array of selected archives, one object per archive with label, file, name, version, and newline-separated game_versions
+    value: ${{ steps.select.outputs.targets }}
 
 runs:
   using: composite
@@ -37,6 +44,10 @@ runs:
       shell: bash
       run: python -m pip install --requirement requirements.txt
 
+    - name: Run tests
+      shell: bash
+      run: python -m unittest discover --start-directory tests
+
     - name: Build archives
       shell: bash
       env:
@@ -51,3 +62,25 @@ runs:
         python tools/changelog_section.py --version "$VERSION" > dist/release-notes.md
         echo "Release notes for $VERSION:"
         cat dist/release-notes.md
+
+    - name: Select archives
+      id: select
+      shell: bash
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        TARGETS: ${{ inputs.targets }}
+      run: |
+        targets="$(jq -c --arg filter "$TARGETS" --arg version "$VERSION" '
+          [ .targets[]
+            | select($filter == "" or (.label | IN($filter | split(" ")[])))
+            | { label, file,
+                name: "Catkins \($version) for Minecraft \(.label)",
+                version: "\($version)+mc\(.label)",
+                game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
+        if [[ "$targets" == "[]" ]]; then
+          echo "No archive matches targets \"$TARGETS\". Valid labels:" >&2
+          jq -r '.targets[].label' dist/manifest.json >&2
+          exit 1
+        fi
+        echo "targets=$targets" >> "$GITHUB_OUTPUT"
+        echo "$targets" | jq -r '.[] | "Selected \(.file) for \(.game_versions | gsub("\n"; ", "))"'

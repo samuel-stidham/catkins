@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to attach archives to, such as v1.0.0
+        description: Tag of an existing release to attach archives to again, such as v1.0.0
         required: true
         type: string
 
@@ -30,28 +30,22 @@ jobs:
           ref: ${{ inputs.tag || github.event.release.tag_name }}
 
       - name: Build archives
-        id: build
         uses: ./.github/actions/build-release
         with:
           tag: ${{ inputs.tag || github.event.release.tag_name }}
 
-      - name: Attach archives and notes to the release, creating it when a tag has none
+      - name: Set release notes and attach archives
         shell: bash
-        env:
-          VERSION: ${{ steps.build.outputs.version }}
         run: |
-          mapfile -t archives < <(jq -r '"dist/" + .targets[].file' dist/manifest.json)
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Setting the notes of release $TAG from CHANGELOG.md"
-            gh release edit "$TAG" --notes-file dist/release-notes.md
-            echo "Attaching ${#archives[@]} archives to release $TAG"
-            gh release upload "$TAG" "${archives[@]}" --clobber
-          else
-            gh release create "$TAG" "${archives[@]}" \
-              --verify-tag \
-              --title "Catkins $VERSION" \
-              --notes-file dist/release-notes.md
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "No GitHub release exists for $TAG. Publish one first; publishing is what triggers this workflow." >&2
+            exit 1
           fi
+          mapfile -t archives < <(jq -r '"dist/" + .targets[].file' dist/manifest.json)
+          echo "Setting the notes of release $TAG from CHANGELOG.md"
+          gh release edit "$TAG" --notes-file dist/release-notes.md
+          echo "Attaching ${#archives[@]} archives to release $TAG"
+          gh release upload "$TAG" "${archives[@]}" --clobber
 
       - name: Verify every archive is attached
         shell: bash

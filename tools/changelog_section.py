@@ -24,8 +24,9 @@ def version_headings(changelog: str) -> list[str]:
 
 
 def section(changelog: str, version: str) -> str | None:
-    """Return the text under the `## [version]` heading, or None when absent or empty.
+    """Return the text under the `## [version]` heading.
 
+    Returns None when the heading is absent and "" when the section is empty.
     The section ends at the next `## ` heading or at the first link reference
     definition such as `[1.0.0]: https://...`.
     """
@@ -43,7 +44,7 @@ def section(changelog: str, version: str) -> str | None:
             break
         body.append(line)
     text = "\n".join(body).strip()
-    return text + "\n" if text else None
+    return text + "\n" if text else ""
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,6 +64,11 @@ def main() -> None:
             f"{args.changelog.name} has no section for {args.version}. "
             f"Add a '## [{args.version}] - YYYY-MM-DD' section with the release notes. "
             f"Sections present: {available}"
+        )
+    if not text:
+        sys.exit(
+            f"The {args.version} section of {args.changelog.name} is empty. "
+            "Add the release notes under its heading."
         )
     sys.stdout.write(text)
 

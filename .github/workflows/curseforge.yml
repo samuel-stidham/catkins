@@ -25,16 +25,14 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ inputs.tag || github.event.release.tag_name }}
-      TARGETS: ${{ inputs.targets }}
-      CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
-      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
     outputs:
-      targets: ${{ steps.select.outputs.targets }}
+      targets: ${{ steps.build.outputs.targets }}
     steps:
       - name: Check configuration
         shell: bash
+        env:
+          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
         run: |
           for name in CURSEFORGE_PROJECT_ID CURSEFORGE_TOKEN; do
             if [[ -z "${!name}" ]]; then
@@ -53,27 +51,7 @@ jobs:
         uses: ./.github/actions/build-release
         with:
           tag: ${{ inputs.tag || github.event.release.tag_name }}
-
-      - name: Select archives to upload
-        id: select
-        shell: bash
-        env:
-          VERSION: ${{ steps.build.outputs.version }}
-        run: |
-          targets="$(jq -c --arg filter "$TARGETS" --arg version "$VERSION" '
-            [ .targets[]
-              | select($filter == "" or (.label | IN($filter | split(" ")[])))
-              | { label, file,
-                  name: "Catkins \($version) for Minecraft \(.label)",
-                  version: "\($version)+mc\(.label)",
-                  game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
-          if [[ "$targets" == "[]" ]]; then
-            echo "No archive matches targets \"$TARGETS\". Valid labels:" >&2
-            jq -r '.targets[].label' dist/manifest.json >&2
-            exit 1
-          fi
-          echo "targets=$targets" >> "$GITHUB_OUTPUT"
-          echo "$targets" | jq -r '.[] | "Will upload \(.file) for \(.game_versions | gsub("\n"; ", "))"'
+          targets: ${{ inputs.targets }}
 
       - name: Share archives with the upload jobs
         uses: actions/upload-artifact@v7
@@ -103,7 +81,7 @@ jobs:
           path: dist
 
       - name: Upload to CurseForge
-        uses: Kira-NT/mc-publish@v3.3.2
+        uses: Kira-NT/mc-publish@c23376546a97f5ba7984e94445da359459b14419 # v3.3.2
         with:
           curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
@@ -113,7 +91,9 @@ jobs:
           version-type: release
           changelog-file: dist/release-notes.md
           # Resource packs have no mod loader. mc-publish requires one, and
-          # CurseForge has no "minecraft" loader tag, so only the game versions apply.
+          # CurseForge has no "minecraft" loader tag, so it is dropped and the
+          # file carries game version tags only, which is what CurseForge
+          # expects for resource packs.
           loaders: minecraft
           game-versions: ${{ matrix.target.game_versions }}
           game-version-filter: none

@@ -57,9 +57,12 @@ When one format needs a different file, put the replacement under `java-override
 ## Commands
 
 ```text
+.venv/bin/python -m unittest discover --start-directory tests
 .venv/bin/python tools/render_pixelmaps.py
 .venv/bin/python tools/build.py --version 1.0.0
 ```
+
+The tests cover the pack format grouping, the generated `pack.mcmeta`, and the changelog extraction. Every release workflow runs them before building.
 
 The renderer updates edition assets and writes 256x256 previews to `tools/preview/`. The build runs the renderer, writes `java/pack.mcmeta`, and creates one release archive per pack format in `dist/`, listed in `dist/manifest.json`.
 
@@ -79,7 +82,7 @@ Release tags use the form `v1.0.0`. There are no pre-releases; test locally acro
 
 | Workflow | File | What it does |
 | --- | --- | --- |
-| GitHub release | `.github/workflows/release.yml` | Replaces the release notes with the `CHANGELOG.md` section, attaches every archive, and fails if any is missing afterwards. |
+| GitHub release | `.github/workflows/release.yml` | Replaces the release notes with the `CHANGELOG.md` section, attaches every archive, and fails if any is missing afterwards. Run manually, it needs the release to exist already. |
 | CurseForge | `.github/workflows/curseforge.yml` | Uploads each archive as its own CurseForge file through [mc-publish](https://github.com/Kira-NT/mc-publish), tagged with the Minecraft versions it supports. One job per archive. |
 | Modrinth | `.github/workflows/modrinth.yml` | Uploads each archive as its own Modrinth version through mc-publish, numbered `<version>+mc<minecraft versions>`. Skipped until `MODRINTH_PROJECT_ID` is set. |
 
