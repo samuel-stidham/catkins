@@ -46,9 +46,13 @@ Each palette key is one non-whitespace character. Each color is eight hexadecima
 
 PNGs are build outputs. Do not hand-edit them. Pull requests with hand-edited PNGs will be sent back for the pixelmap.
 
-## Java overlays
+## Java pack formats
 
-Use overlays only when a target version needs a different file. Add a row to `FORMAT_TABLE` in `tools/build.py` with the `version`, `format`, `legacy`, and `overlay` fields filled in. Put overlay files under the matching directory inside `java/`, using the same path they replace. The build writes `supported_formats` for pre-1.21.9 clients and `min_format`/`max_format` for current clients, so each selects the correct range.
+`PACK_FORMATS` in `tools/build.py` lists every supported Minecraft version with its resource pack format, taken from <https://minecraft.wiki/w/Pack_format>. The build groups consecutive versions that share a format and writes one release zip per group. Each zip gets its own `pack.mcmeta` pinned to that format. The copy under `java/` keeps a permissive `pack.mcmeta` that spans every format, for development only.
+
+To support a new Minecraft version, add its row to `PACK_FORMATS`. A version with a new format produces a new zip. A version that keeps the previous format joins the previous zip.
+
+When one format needs a different file, put the replacement under `java-overrides/<pack format>/` at the same path it replaces inside `java/`. The build copies it over the base file for that zip only.
 
 ## Commands
 
@@ -57,7 +61,7 @@ Use overlays only when a target version needs a different file. Add a row to `FO
 .venv/bin/python tools/build.py --version 1.0.0
 ```
 
-The renderer updates edition assets and writes 256x256 previews to `tools/preview/`. The build runs the renderer, writes `java/pack.mcmeta`, and creates the release archive in `dist/`.
+The renderer updates edition assets and writes 256x256 previews to `tools/preview/`. The build runs the renderer, writes `java/pack.mcmeta`, and creates one release archive per pack format in `dist/`, listed in `dist/manifest.json`.
 
 ## Pull requests
 
@@ -71,16 +75,25 @@ Include:
 
 ## Releases
 
-Release tags use the form `v1.0.0`, or `v1.0.0-beta.1` for a pre-release. Pushing one builds the Java archive, publishes the same file to Modrinth and CurseForge, and creates a GitHub release.
+Release tags use the form `v1.0.0`. There are no pre-releases; test locally across every supported Minecraft version before tagging. Before publishing, add a `## [<version>] - <date>` section to `CHANGELOG.md` and commit it. Every workflow extracts that section with `tools/changelog_section.py` and fails when it is missing, so a release never ships without notes. Then publish a release on GitHub with the tag, from the Releases page or with `gh release create`. Publishing the release triggers three workflows. Pushing a tag on its own triggers nothing. Each workflow builds the archives from the tag on its own, and the build is deterministic, so all three produce identical zips.
 
-Configure these GitHub repository variables before pushing the first release tag:
+| Workflow | File | What it does |
+| --- | --- | --- |
+| GitHub release | `.github/workflows/release.yml` | Replaces the release notes with the `CHANGELOG.md` section, attaches every archive, and fails if any is missing afterwards. |
+| CurseForge | `.github/workflows/curseforge.yml` | Uploads each archive as its own CurseForge file through [mc-publish](https://github.com/Kira-NT/mc-publish), tagged with the Minecraft versions it supports. One job per archive. |
+| Modrinth | `.github/workflows/modrinth.yml` | Uploads each archive as its own Modrinth version through mc-publish, numbered `<version>+mc<minecraft versions>`. Skipped until `MODRINTH_PROJECT_ID` is set. |
 
-- `MODRINTH_PROJECT_ID`
-- `CURSEFORGE_PROJECT_ID`
+CurseForge and Modrinth receive the same `CHANGELOG.md` section as their changelog, so the three places never drift. Notes typed into the GitHub release form are overwritten.
 
-Configure these GitHub repository secrets:
+Configure these GitHub repository variables and secrets before the first release. The CurseForge pair is required. Set the Modrinth pair once the Modrinth project is approved, and later tags upload there automatically.
 
-- `MODRINTH_TOKEN`
-- `CURSEFORGE_TOKEN`
+| Kind | Name |
+| --- | --- |
+| Variable | `CURSEFORGE_PROJECT_ID` |
+| Secret | `CURSEFORGE_TOKEN` |
+| Variable | `MODRINTH_PROJECT_ID` |
+| Secret | `MODRINTH_TOKEN` |
+
+To upload an existing release to a platform later, such as the releases that shipped before Modrinth approval, run that platform's workflow manually from the Actions tab with the tag. The optional `targets` input limits the run to the listed archive labels, such as `1.21.4 26.3`. Upload jobs are named by label, so a failed run shows which labels to retry.
 
 Both platform projects must already exist and accept Java resource-pack uploads. Never commit access tokens.

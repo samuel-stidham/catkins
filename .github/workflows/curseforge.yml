@@ -1,0 +1,119 @@
+name: CurseForge
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload, such as v1.0.0
+        required: true
+        type: string
+      targets:
+        description: Space-separated archive labels to upload, such as "1.21.4 26.3". Leave empty to upload every archive.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: curseforge-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+      TARGETS: ${{ inputs.targets }}
+      CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    outputs:
+      targets: ${{ steps.select.outputs.targets }}
+    steps:
+      - name: Check configuration
+        shell: bash
+        run: |
+          for name in CURSEFORGE_PROJECT_ID CURSEFORGE_TOKEN; do
+            if [[ -z "${!name}" ]]; then
+              echo "$name is not configured" >&2
+              exit 1
+            fi
+          done
+
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+
+      - name: Build archives
+        id: build
+        uses: ./.github/actions/build-release
+        with:
+          tag: ${{ inputs.tag || github.event.release.tag_name }}
+
+      - name: Select archives to upload
+        id: select
+        shell: bash
+        env:
+          VERSION: ${{ steps.build.outputs.version }}
+        run: |
+          targets="$(jq -c --arg filter "$TARGETS" --arg version "$VERSION" '
+            [ .targets[]
+              | select($filter == "" or (.label | IN($filter | split(" ")[])))
+              | { label, file,
+                  name: "Catkins \($version) for Minecraft \(.label)",
+                  version: "\($version)+mc\(.label)",
+                  game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
+          if [[ "$targets" == "[]" ]]; then
+            echo "No archive matches targets \"$TARGETS\". Valid labels:" >&2
+            jq -r '.targets[].label' dist/manifest.json >&2
+            exit 1
+          fi
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "$targets" | jq -r '.[] | "Will upload \(.file) for \(.game_versions | gsub("\n"; ", "))"'
+
+      - name: Share archives with the upload jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: archives
+          path: |
+            dist/*.zip
+            dist/manifest.json
+            dist/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    name: Upload ${{ matrix.target.label }}
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        target: ${{ fromJson(needs.build.outputs.targets) }}
+    steps:
+      - name: Fetch archives
+        uses: actions/download-artifact@v8
+        with:
+          name: archives
+          path: dist
+
+      - name: Upload to CurseForge
+        uses: Kira-NT/mc-publish@v3.3.2
+        with:
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: dist/${{ matrix.target.file }}
+          name: ${{ matrix.target.name }}
+          version: ${{ matrix.target.version }}
+          version-type: release
+          changelog-file: dist/release-notes.md
+          # Resource packs have no mod loader. mc-publish requires one, and
+          # CurseForge has no "minecraft" loader tag, so only the game versions apply.
+          loaders: minecraft
+          game-versions: ${{ matrix.target.game_versions }}
+          game-version-filter: none

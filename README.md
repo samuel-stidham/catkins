@@ -6,7 +6,7 @@ Catkins is a cat-inspired Minecraft resource pack. Every added resource follows 
 
 ### Java Edition
 
-Download `catkins-java-<version>.zip` and place it in the client's `resourcepacks` directory. Select Catkins in the Resource Packs screen. Do not extract the release zip.
+Each release ships one zip per Minecraft version range. The file name ends with the versions it supports: `catkins-java-1.0.0-mc1.21.4.zip` is for 1.21.4, and `catkins-java-1.0.0-mc1.21.7-1.21.8.zip` is for 1.21.7 and 1.21.8. Download the zip that names your Minecraft version and place it in the client's `resourcepacks` directory. Select Catkins in the Resource Packs screen. Do not extract the release zip.
 
 For development, copy the `java/` directory into `resourcepacks/catkins` instead. Reload resources with `F3+T` after each change.
 
@@ -27,7 +27,7 @@ The Java pack adds symmetric cat ears to both block models and gives both blocks
 | Java | Complete | 1.21 through 1.21.11 and 26.1 through 26.3 |
 | Bedrock | Planned | Whichever Bedrock release is current when work starts |
 
-One Java pack supports the full Java range. Overlays hold different files for the versions that need them.
+Every Java version in the range gets a release zip whose `pack.mcmeta` is pinned to that version's pack format, so the game never warns that the pack is made for another version.
 
 ## What differs on Bedrock
 
@@ -43,7 +43,7 @@ python3 -m venv .venv
 .venv/bin/python tools/build.py --version 1.0.0
 ```
 
-The build runs `tools/render_pixelmaps.py`, which writes pack textures under `java/` and 256x256 previews under `tools/preview/`. The build then creates `dist/catkins-java-<version>.zip`. Generated PNGs are derived from the text pixelmaps in `tools/pixelmaps/`.
+The build runs `tools/render_pixelmaps.py`, which writes pack textures under `java/` and 256x256 previews under `tools/preview/`. The build then creates one `dist/catkins-java-<version>-mc<minecraft versions>.zip` per pack format and lists them in `dist/manifest.json`. Generated PNGs are derived from the text pixelmaps in `tools/pixelmaps/`.
 
 ## License
 
