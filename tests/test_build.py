@@ -65,6 +65,23 @@ class BuildTest(unittest.TestCase):
             for name in names:
                 self.assertEqual((first / name).read_bytes(), (second / name).read_bytes(), name)
 
+    def test_manifest_carries_platform_names(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            with mock.patch.object(build, "DIST_DIR", Path(temp)):
+                manifest = build.build("1.2.3")
+            written = json.loads((Path(temp) / "manifest.json").read_text(encoding="ascii"))
+        self.assertEqual(manifest, written)
+        by_label = {target["label"]: target for target in manifest["targets"]}
+        self.assertEqual(by_label["1.21.7-1.21.8"]["name"], "Catkins 1.2.3 for Minecraft 1.21.7-1.21.8")
+        self.assertEqual(by_label["1.21.7-1.21.8"]["platform_version"], "1.2.3+mc1.21.7-1.21.8")
+        self.assertEqual(by_label["1.21.7-1.21.8"]["file"], "catkins-java-1.2.3-mc1.21.7-1.21.8.zip")
+
+    def test_platform_names(self) -> None:
+        self.assertEqual(
+            build.platform_names("1.0.0", "26.3"),
+            {"name": "Catkins 1.0.0 for Minecraft 26.3", "platform_version": "1.0.0+mc26.3"},
+        )
+
 
 class PackMetadataTest(unittest.TestCase):
     def test_legacy_format_pins_pack_format_only(self) -> None:

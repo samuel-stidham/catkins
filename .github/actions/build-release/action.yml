@@ -12,7 +12,7 @@ inputs:
 
 outputs:
   targets:
-    description: JSON array of selected archives, one object per archive with label, file, name, version, and newline-separated game_versions
+    description: JSON array of selected archives, one object per archive with label, file, name, platform_version, and newline-separated game_versions
     value: ${{ steps.select.outputs.targets }}
 
 runs:
@@ -51,6 +51,14 @@ runs:
         VERSION: ${{ steps.version.outputs.version }}
       run: python tools/build.py --version "$VERSION"
 
+    - name: Check that the build reproduces the committed assets
+      shell: bash
+      run: |
+        if ! git diff --exit-code --stat -- java; then
+          echo "The build changed files under java/. Run tools/build.py locally and commit the result." >&2
+          exit 1
+        fi
+
     - name: Write release notes from CHANGELOG.md
       shell: bash
       env:
@@ -64,20 +72,20 @@ runs:
       id: select
       shell: bash
       env:
-        VERSION: ${{ steps.version.outputs.version }}
         TARGETS: ${{ inputs.targets }}
       run: |
-        targets="$(jq -c --arg filter "$TARGETS" --arg version "$VERSION" '
-          [ .targets[]
-            | select($filter == "" or (.label | IN($filter | split(" ")[])))
-            | { label, file,
-                name: "Catkins \($version) for Minecraft \(.label)",
-                version: "\($version)+mc\(.label)",
-                game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
-        if [[ "$targets" == "[]" ]]; then
-          echo "No archive matches targets \"$TARGETS\". Valid labels:" >&2
+        unknown="$(jq -r --arg filter "$TARGETS" '
+          [$filter | split(" ")[] | select(. != "")] - [.targets[].label] | .[]' dist/manifest.json)"
+        if [[ -n "$unknown" ]]; then
+          echo "Unknown archive labels: $unknown" >&2
+          echo "Valid labels:" >&2
           jq -r '.targets[].label' dist/manifest.json >&2
           exit 1
         fi
+        targets="$(jq -c --arg filter "$TARGETS" '
+          [ .targets[]
+            | select($filter == "" or (.label | IN($filter | split(" ")[])))
+            | { label, file, name, platform_version,
+                game_versions: (.game_versions | join("\n")) } ]' dist/manifest.json)"
         echo "targets=$targets" >> "$GITHUB_OUTPUT"
         echo "$targets" | jq -r '.[] | "Selected \(.file) for \(.game_versions | gsub("\n"; ", "))"'

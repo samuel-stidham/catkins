@@ -30,6 +30,8 @@ on:
 
 jobs:
   build:
+    # A GitHub release with the pre-release box ticked is never uploaded.
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     outputs:
       targets: ${{ steps.build.outputs.targets }}
@@ -105,7 +107,7 @@ jobs:
           curseforge-token: ${{ secrets.token }}
           files: dist/${{ matrix.target.file }}
           name: ${{ matrix.target.name }}
-          version: ${{ matrix.target.version }}
+          version: ${{ matrix.target.platform_version }}
           version-type: release
           changelog-file: dist/release-notes.md
           # Resource packs have no mod loader. mc-publish requires one, and
@@ -124,7 +126,7 @@ jobs:
           modrinth-token: ${{ secrets.token }}
           files: dist/${{ matrix.target.file }}
           name: ${{ matrix.target.name }}
-          version: ${{ matrix.target.version }}
+          version: ${{ matrix.target.platform_version }}
           version-type: release
           changelog-file: dist/release-notes.md
           # Modrinth's loader tag for resource packs.

@@ -139,6 +139,14 @@ def write_archive(destination: Path, files: dict[str, Path], metadata: dict[str,
             archive.writestr(info, entries[name], compresslevel=9)
 
 
+def platform_names(version: str, label: str) -> dict[str, str]:
+    """Display name and version number of one archive on CurseForge and Modrinth."""
+    return {
+        "name": f"Catkins {version} for Minecraft {label}",
+        "platform_version": f"{version}+mc{label}",
+    }
+
+
 def build(version: str) -> dict[str, Any]:
     """Write one archive per target plus dist/manifest.json describing them."""
     DIST_DIR.mkdir(parents=True, exist_ok=True)
@@ -147,7 +155,7 @@ def build(version: str) -> dict[str, Any]:
         pack_format = target["pack_format"]
         file_name = f"catkins-java-{version}-mc{target['label']}.zip"
         write_archive(DIST_DIR / file_name, pack_files(pack_format), pack_metadata(pack_format))
-        manifest["targets"].append({**target, "file": file_name})
+        manifest["targets"].append({**target, "file": file_name, **platform_names(version, target["label"])})
     (DIST_DIR / "manifest.json").write_bytes(encode_json(manifest))
     return manifest
 

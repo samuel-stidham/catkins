@@ -78,7 +78,9 @@ Include:
 
 ## Releases
 
-Release tags use the form `v1.0.0`. There are no pre-releases; test locally across every supported Minecraft version before tagging. Before publishing, add a `## [<version>] - <date>` section to `CHANGELOG.md` and commit it. Every workflow extracts that section with `tools/changelog_section.py` and fails when it is missing, so a release never ships without notes. Then publish a release on GitHub with the tag, from the Releases page or with `gh release create`. Publishing the release triggers three workflows. Pushing a tag on its own triggers nothing. Each workflow builds the archives from the tag on its own, and the build is deterministic, so all three produce identical zips.
+Release tags use the form `v1.0.0`. There are no pre-releases; test locally across every supported Minecraft version before tagging. Before publishing, add a `## [<version>] - <date>` section to `CHANGELOG.md` and commit it. Every workflow extracts that section with `tools/changelog_section.py` and refuses to upload anything when it is missing. Then publish a release on GitHub with the tag, from the Releases page or with `gh release create`. Leave the pre-release box unticked, because every workflow skips a pre-release. The workflow sets the release title to `Catkins <version>`. Publishing the release triggers three workflows. Pushing a tag on its own triggers nothing. Each workflow builds the archives from the tag on its own, and the build is deterministic, so all three produce identical zips.
+
+The workflows read `CHANGELOG.md` from the tag, so a section added after tagging is invisible to them. If a release was published without its section, the release is public with no archives, and a manual re-run cannot fix it. Delete the release and the tag on GitHub, delete the local tag, commit the changelog section, then publish the release again with the same tag.
 
 | Workflow | File | What it does |
 | --- | --- | --- |
@@ -99,6 +101,6 @@ Configure these GitHub repository variables and secrets before the first release
 | Variable | `MODRINTH_PROJECT_ID` |
 | Secret | `MODRINTH_TOKEN` |
 
-To upload an existing release to a platform later, such as the releases that shipped before Modrinth approval, run that platform's workflow manually from the Actions tab with the tag. The optional `targets` input limits the run to the listed archive labels, such as `1.21.4 26.3`. Upload jobs are named by label, so a failed run shows which labels to retry.
+To upload an existing release to a platform later, such as the releases that shipped before Modrinth approval, run that platform's workflow manually from the Actions tab with the tag. The optional `targets` input limits the run to the listed archive labels, such as `1.21.4 26.3`. A label that matches no archive fails the run. Upload jobs are named by label, so a failed run shows which labels to retry.
 
 Both platform projects must already exist and accept Java resource-pack uploads. Never commit access tokens.

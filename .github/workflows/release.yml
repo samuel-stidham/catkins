@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   release:
+    # A GitHub release with the pre-release box ticked gets no archives.
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -28,7 +30,7 @@ jobs:
       - name: Check that the release exists
         shell: bash
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
+          if ! gh release view "$TAG" >/dev/null; then
             echo "No GitHub release exists for $TAG. Publish one first; publishing is what triggers this workflow." >&2
             exit 1
           fi
@@ -47,8 +49,8 @@ jobs:
         shell: bash
         run: |
           mapfile -t archives < <(jq -r '"dist/" + .targets[].file' dist/manifest.json)
-          echo "Setting the notes of release $TAG from CHANGELOG.md"
-          gh release edit "$TAG" --notes-file dist/release-notes.md
+          echo "Setting the title and notes of release $TAG from CHANGELOG.md"
+          gh release edit "$TAG" --title "Catkins ${TAG#v}" --notes-file dist/release-notes.md
           echo "Attaching ${#archives[@]} archives to release $TAG"
           gh release upload "$TAG" "${archives[@]}" --clobber
 
