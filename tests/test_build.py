@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -64,6 +66,28 @@ class PackFilesTest(unittest.TestCase):
         files = build.pack_files(34)
         self.assertNotIn("pack.mcmeta", files)
         self.assertIn("assets/minecraft/models/block/carved_pumpkin.json", files)
+
+    def test_override_directory_applies_to_its_format_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            java = Path(temp) / "java"
+            overrides = Path(temp) / "java-overrides"
+            (java / "assets").mkdir(parents=True)
+            (java / "assets" / "base.json").write_text("base")
+            (java / "assets" / "shared.json").write_text("base")
+            (java / "pack.mcmeta").write_text("{}")
+            (overrides / "69" / "assets").mkdir(parents=True)
+            (overrides / "69" / "assets" / "shared.json").write_text("override")
+            (overrides / "69" / "assets" / "extra.json").write_text("extra")
+            (overrides / "69" / "pack.mcmeta").write_text("{}")
+            with mock.patch.object(build, "JAVA_DIR", java), mock.patch.object(build, "OVERRIDES_DIR", overrides):
+                modern = build.pack_files(69)
+                legacy = build.pack_files(34)
+            self.assertEqual(modern["assets/shared.json"], overrides / "69" / "assets" / "shared.json")
+            self.assertEqual(modern["assets/base.json"], java / "assets" / "base.json")
+            self.assertEqual(modern["assets/extra.json"], overrides / "69" / "assets" / "extra.json")
+            self.assertNotIn("pack.mcmeta", modern)
+            self.assertEqual(legacy["assets/shared.json"], java / "assets" / "shared.json")
+            self.assertNotIn("assets/extra.json", legacy)
 
 
 if __name__ == "__main__":

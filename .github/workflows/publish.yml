@@ -1,0 +1,136 @@
+name: Publish archives
+
+# Shared by curseforge.yml and modrinth.yml. Builds the archives for a tag,
+# then uploads each one as its own file or version on the chosen platform.
+
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: curseforge or modrinth
+        required: true
+        type: string
+      tag:
+        description: Release tag to upload, such as v1.0.0
+        required: true
+        type: string
+      targets:
+        description: Space-separated archive labels to upload. Empty uploads every archive.
+        required: false
+        type: string
+        default: ""
+      project-id:
+        description: The platform's project ID
+        required: true
+        type: string
+    secrets:
+      token:
+        description: The platform's upload token
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.build.outputs.targets }}
+    steps:
+      - name: Check configuration
+        shell: bash
+        env:
+          PLATFORM: ${{ inputs.platform }}
+          PROJECT_ID: ${{ inputs.project-id }}
+          TOKEN: ${{ secrets.token }}
+        run: |
+          case "$PLATFORM" in
+            curseforge|modrinth) ;;
+            *)
+              echo "platform must be curseforge or modrinth, got '$PLATFORM'" >&2
+              exit 1
+              ;;
+          esac
+          prefix="${PLATFORM^^}"
+          if [[ -z "$PROJECT_ID" ]]; then
+            echo "Repository variable ${prefix}_PROJECT_ID is not configured" >&2
+            exit 1
+          fi
+          if [[ -z "$TOKEN" ]]; then
+            echo "Repository secret ${prefix}_TOKEN is not configured" >&2
+            exit 1
+          fi
+
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Build archives
+        id: build
+        uses: ./.github/actions/build-release
+        with:
+          tag: ${{ inputs.tag }}
+          targets: ${{ inputs.targets }}
+
+      - name: Share archives with the upload jobs
+        uses: actions/upload-artifact@v7
+        with:
+          name: archives-${{ inputs.platform }}
+          path: |
+            dist/*.zip
+            dist/manifest.json
+            dist/release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    name: Upload ${{ matrix.target.label }}
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        target: ${{ fromJson(needs.build.outputs.targets) }}
+    steps:
+      - name: Fetch archives
+        uses: actions/download-artifact@v8
+        with:
+          name: archives-${{ inputs.platform }}
+          path: dist
+
+      - name: Upload to CurseForge
+        if: inputs.platform == 'curseforge'
+        uses: Kira-NT/mc-publish@c23376546a97f5ba7984e94445da359459b14419 # v3.3.2
+        with:
+          curseforge-id: ${{ inputs.project-id }}
+          curseforge-token: ${{ secrets.token }}
+          files: dist/${{ matrix.target.file }}
+          name: ${{ matrix.target.name }}
+          version: ${{ matrix.target.version }}
+          version-type: release
+          changelog-file: dist/release-notes.md
+          # Resource packs have no mod loader. mc-publish requires one, and
+          # CurseForge has no "minecraft" loader tag, so it is dropped and the
+          # file carries game version tags only, which is what CurseForge
+          # expects for resource packs.
+          loaders: minecraft
+          game-versions: ${{ matrix.target.game_versions }}
+          game-version-filter: none
+
+      - name: Upload to Modrinth
+        if: inputs.platform == 'modrinth'
+        uses: Kira-NT/mc-publish@c23376546a97f5ba7984e94445da359459b14419 # v3.3.2
+        with:
+          modrinth-id: ${{ inputs.project-id }}
+          modrinth-token: ${{ secrets.token }}
+          files: dist/${{ matrix.target.file }}
+          name: ${{ matrix.target.name }}
+          version: ${{ matrix.target.version }}
+          version-type: release
+          changelog-file: dist/release-notes.md
+          # Modrinth's loader tag for resource packs.
+          loaders: minecraft
+          game-versions: ${{ matrix.target.game_versions }}
+          game-version-filter: none
+          # Leave featuring to Modrinth, which features the newest version per game version.
+          modrinth-featured: false
+          modrinth-unfeature-mode: none

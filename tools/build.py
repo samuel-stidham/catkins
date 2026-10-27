@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 import json
 from pathlib import Path
 import re
 import subprocess
 import sys
-from typing import Any, Sequence
+from typing import Any
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 

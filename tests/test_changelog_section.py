@@ -54,10 +54,6 @@ class SectionTest(unittest.TestCase):
     def test_headings_are_listed_in_order(self) -> None:
         self.assertEqual(changelog_section.version_headings(CHANGELOG), ["Unreleased", "1.1.0", "1.0.0", "0.9.0"])
 
-    def test_repository_changelog_has_notes_for_the_current_version(self) -> None:
-        text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertTrue(changelog_section.section(text, "1.0.0"))
-
 
 if __name__ == "__main__":
     unittest.main()

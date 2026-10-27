@@ -86,6 +86,8 @@ Release tags use the form `v1.0.0`. There are no pre-releases; test locally acro
 | CurseForge | `.github/workflows/curseforge.yml` | Uploads each archive as its own CurseForge file through [mc-publish](https://github.com/Kira-NT/mc-publish), tagged with the Minecraft versions it supports. One job per archive. |
 | Modrinth | `.github/workflows/modrinth.yml` | Uploads each archive as its own Modrinth version through mc-publish, numbered `<version>+mc<minecraft versions>`. Skipped until `MODRINTH_PROJECT_ID` is set. |
 
+The CurseForge and Modrinth workflows are thin callers of `.github/workflows/publish.yml`, which holds the shared build and upload jobs. The build steps themselves live in `.github/actions/build-release/`.
+
 CurseForge and Modrinth receive the same `CHANGELOG.md` section as their changelog, so the three places never drift. Notes typed into the GitHub release form are overwritten.
 
 Configure these GitHub repository variables and secrets before the first release. The CurseForge pair is required. Set the Modrinth pair once the Modrinth project is approved, and later tags upload there automatically.

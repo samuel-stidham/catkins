@@ -29,6 +29,14 @@ jobs:
         with:
           ref: ${{ inputs.tag || github.event.release.tag_name }}
 
+      - name: Check that the release exists
+        shell: bash
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "No GitHub release exists for $TAG. Publish one first; publishing is what triggers this workflow." >&2
+            exit 1
+          fi
+
       - name: Build archives
         uses: ./.github/actions/build-release
         with:
@@ -37,10 +45,6 @@ jobs:
       - name: Set release notes and attach archives
         shell: bash
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            echo "No GitHub release exists for $TAG. Publish one first; publishing is what triggers this workflow." >&2
-            exit 1
-          fi
           mapfile -t archives < <(jq -r '"dist/" + .targets[].file' dist/manifest.json)
           echo "Setting the notes of release $TAG from CHANGELOG.md"
           gh release edit "$TAG" --notes-file dist/release-notes.md
